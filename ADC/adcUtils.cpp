@@ -46,30 +46,74 @@ static void adcerrorcallback(ADCDriver *adcp, adcerror_t err) {
  * Channels:    B0 == AN8.
  * Channels:    B1 == AN9.
  */
+
+// ver os/common/ext/ST/STM32L0xx/stm32l071xx.h
+//typedef struct
+//{
+//  __IO uint32_t ISR;          /*!< ADC Interrupt and Status register,                          Address offset:0x00 */
+//  __IO uint32_t IER;          /*!< ADC Interrupt Enable register,                              Address offset:0x04 */
+//  __IO uint32_t CR;           /*!< ADC Control register,                                       Address offset:0x08 */
+//  __IO uint32_t CFGR1;        /*!< ADC Configuration register 1,                               Address offset:0x0C */
+//  __IO uint32_t CFGR2;        /*!< ADC Configuration register 2,                               Address offset:0x10 */
+//  __IO uint32_t SMPR;         /*!< ADC Sampling time register,                                 Address offset:0x14 */
+//  uint32_t   RESERVED1;       /*!< Reserved,                                                                  0x18 */
+//  uint32_t   RESERVED2;       /*!< Reserved,                                                                  0x1C */
+//  __IO uint32_t TR;           /*!< ADC watchdog threshold register,                            Address offset:0x20 */
+//  uint32_t   RESERVED3;       /*!< Reserved,                                                                  0x24 */
+//  __IO uint32_t CHSELR;       /*!< ADC channel selection register,                             Address offset:0x28 */
+//  uint32_t   RESERVED4[5];    /*!< Reserved,                                                                  0x2C */
+//  __IO uint32_t DR;           /*!< ADC data register,                                          Address offset:0x40 */
+//  uint32_t   RESERVED5[28];   /*!< Reserved,                                                           0x44 - 0xB0 */
+//  __IO uint32_t CALFACT;      /*!< ADC data register,                                          Address offset:0xB4 */
+//} ADC_TypeDef;
+
+// B0 = ADC-IN8
+//static const ADCConversionGroup adcgrpcfg1 = {
+//  FALSE,
+//  ADC_GRP1_NUM_CHANNELS,
+//  NULL,
+//  adcerrorcallback,
+//  ADC_CR_ADSTART,           /* CR */
+//  0,                        /* CFGR1 */
+//  0,                        /* CFGR2 */
+//  ADC_SMPR_SMP_160P5,       /* SMPR */
+//  0,                        /* TR */
+//  ADC_CHSELR_CHSEL8,        /* CHSELR */
+//  0,                        /* DR */
+//  0,                        /* CALFACT */
+//};
+//  ADC_CFGR1_CONT | ADC_CFGR1_RES_12BIT,             /* CFGR1 */
+
 static const ADCConversionGroup adcgrpcfg1 = {
   FALSE,
   ADC_GRP1_NUM_CHANNELS,
   NULL,
   adcerrorcallback,
-  0,                        /* CR1 */
-  ADC_CR2_SWSTART,          /* CR2 */
-  0,                        /* SMPR1 */
-  ADC_SMPR2_SMP_AN8(ADC_SAMPLE_480), /* SMPR2 */
-  0,                        /* HTR */
-  0,                        /* LTR */
-  0,                        /* SQR1 */
-  0,  /* SQR2 */
-  ADC_SQR3_SQ1_N(ADC_CHANNEL_IN8)
+  ADC_CFGR1_CONT | ADC_CFGR1_RES_12BIT,             /* CFGR1 */
+  ADC_TR(0, 0),                                     /* TR */
+  ADC_SMPR_SMP_160P5,                                 /* SMPR */
+  ADC_CHSELR_CHSEL8                                /* CHSELR */
 };
+
+
+
+//static const ADCConversionGroup adcgrpcfg1 = {
+//  FALSE,
+//  ADC_GRP1_NUM_CHANNELS,
+//  NULL,
+//  adcerrorcallback,
+//  0,                        /* CFGR1 */
+//  0,                        /* TR */
+//  ADC_SMPR_SMP_160P5,       /* SMPR */
+//  ADC_CHSELR_CHSEL8,        /* CHSELR */
+//};
 
 extern int16_t incAdPormil;
 
 /* Lee tension */
 void leeTension(float *vBat)
 {
-    palSetLineMode(LINE_ONAD, PAL_MODE_OUTPUT_PUSHPULL);
-    ACTIVAPAD(LINE_ONAD);
-    palSetPadMode(GPIOB, GPIOB_VBAT, PAL_MODE_INPUT_ANALOG); // B0 medida de bateria
+    palSetLineMode(GPIOA_VINAD, PAL_MODE_INPUT_ANALOG); // B0 medida de bateria
     chThdSleepMilliseconds(10);
     adcStart(&ADCD1,NULL);
     adcConvert(&ADCD1, &adcgrpcfg1, &samples_buf[0], ADC_GRP1_BUF_DEPTH);

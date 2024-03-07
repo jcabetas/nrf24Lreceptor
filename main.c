@@ -64,15 +64,15 @@ static const SPIConfig spicfg = {
   NULL,
   NULL,
   GPIOB,
-  NRF24L01_SPI_CS,
+  GPIOA_CS,
   SPI_CR1_BR_1 | SPI_CR1_BR_0,
   0
 };
 
 
 static RFConfig nrf24l01_cfg = {
-  .line_ce          = NRF24L01_LINE_CE,
-  .line_irq         = NRF24L01_LINE_IRQ,
+  .line_ce          = GPIOA_CE,
+  .line_irq         = LINE_IRQ,
   .spip             = &SPID1,
   .spicfg           = &spicfg,
   .auto_retr_count  = NRF24L01_ARC_15_times,
@@ -93,14 +93,14 @@ static RFConfig nrf24l01_cfg = {
 
 
 void parpadear(uint8_t numVeces, uint16_t ms) {
-    palSetPadMode(GPIOC, GPIOC_LED, PAL_MODE_OUTPUT_PUSHPULL);
+    palSetLineMode(LINE_LED, PAL_MODE_OUTPUT_PUSHPULL);
     for (uint8_t i = 0; i < numVeces; i++) {
-        palClearPad(GPIOC, GPIOC_LED); // enciende led placa
+        palClearLine(LINE_LED); // enciende led placa
         chThdSleepMilliseconds(10);
-        palSetPad(GPIOC, GPIOC_LED); // apaga led placa
+        palSetLine(LINE_LED); // apaga led placa
         chThdSleepMilliseconds(ms);
     }
-    palSetPadMode(GPIOC, GPIOC_LED, PAL_MODE_INPUT_ANALOG);
+    palSetLineMode(LINE_LED, PAL_MODE_INPUT_ANALOG);
 }
 /*
  * Application entry point.
@@ -117,18 +117,20 @@ int main(void) {
   halInit();
   chSysInit();
 
+  parpadear(3,200);
+
   /*
    * SPID1 I/O pins setup.(It bypasses board.h configurations)
    */
-  palSetLineMode(NRF24L01_SPI_SCK, PAL_MODE_ALTERNATE(5) | PAL_STM32_OSPEED_HIGHEST);
-  palSetLineMode(NRF24L01_SPI_MISO, PAL_MODE_ALTERNATE(5) | PAL_STM32_OSPEED_HIGHEST);
-  palSetLineMode(NRF24L01_SPI_MOSI, PAL_MODE_ALTERNATE(5) | PAL_STM32_OSPEED_HIGHEST);
-  palSetLineMode(NRF24L01_SPI_CS, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
+  palSetLineMode(LINE_SPI1SCK, PAL_MODE_ALTERNATE(5) | PAL_STM32_OSPEED_HIGHEST);
+  palSetLineMode(LINE_SPI1MISO, PAL_MODE_ALTERNATE(5) | PAL_STM32_OSPEED_HIGHEST);
+  palSetLineMode(LINE_SPI1MOSI, PAL_MODE_ALTERNATE(5) | PAL_STM32_OSPEED_HIGHEST);
+  palSetLineMode(LINE_CS, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
   /*
    * CE and IRQ pins setup.
    */
-  palSetLineMode(NRF24L01_LINE_CE, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
-  palSetLineMode(NRF24L01_LINE_IRQ, PAL_MODE_INPUT | PAL_STM32_OSPEED_HIGHEST);
+  palSetLineMode(LINE_CE, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
+  palSetLineMode(LINE_IRQ, PAL_MODE_INPUT | PAL_STM32_OSPEED_HIGHEST);
 
   /* Starting Serial Driver 2 with default configurations. */
   sdStart(&SD2, NULL);
@@ -162,9 +164,9 @@ int main(void) {
     string[0] = '\0';
     rf_msg_t msg = rfReceiveString(&RFD1, string, "RXadd", TIME_MS2I(4000));
     if (msg == RF_OK)
-        parpadear(1,150);
+        parpadear(5,150);
     else
-        parpadear(3,150);
+        parpadear(1,150);
 #endif
   }
   rfStop(&RFD1);

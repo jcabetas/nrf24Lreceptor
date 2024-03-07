@@ -1,4 +1,4 @@
-##############################################################################
+#############################################################################
 # Build global options
 # NOTE: Can be overridden externally.
 #
@@ -57,7 +57,7 @@ endif
 # Stack size to be allocated to the Cortex-M process stack. This stack is
 # the stack used by the main() thread.
 ifeq ($(USE_PROCESS_STACKSIZE),)
-  USE_PROCESS_STACKSIZE = 0xA00
+  USE_PROCESS_STACKSIZE = 0x800
 endif
 
 # Stack size to the allocated to the Cortex-M main/exceptions stack. This
@@ -68,7 +68,7 @@ endif
 
 # Enables the use of FPU (no, softfp, hard).
 ifeq ($(USE_FPU),)
-  USE_FPU = hard
+  USE_FPU = softfp
 endif
 
 # FPU-related options.
@@ -85,10 +85,10 @@ endif
 #
 
 # Define project name here
-PROJECT = nRF24L
+PROJECT = nrf24receptor
 
 # Target settings.
-MCU  = cortex-m4
+MCU  = cortex-m0
 
 # Imported source files and paths.
 ifeq ($(OS),Windows_NT)
@@ -104,15 +104,15 @@ DEPDIR   := ./.dep
 # Licensing files.
 include $(CHIBIOS)/os/license/license.mk
 # Startup files.
-include $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC/mk/startup_stm32f4xx.mk
+include $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC/mk/startup_stm32l0xx.mk
 # HAL-OSAL files (optional).
 include $(CHIBIOS)/os/hal/hal.mk
-include $(CHIBIOS)/os/hal/ports/STM32/STM32F4xx/platform.mk
-include WEACT_F411RE/board.mk
+include $(CHIBIOS)/os/hal/ports/STM32/STM32L0xx/platform.mk
+include alimentadorEE4board/board.mk
 include $(CHIBIOS)/os/hal/osal/rt-nil/osal.mk
 # RTOS files (optional).
 include $(CHIBIOS)/os/rt/rt.mk
-include $(CHIBIOS)/os/common/ports/ARMv7-M/compilers/GCC/mk/port.mk
+include $(CHIBIOS)/os/common/ports/ARMv6-M/compilers/GCC/mk/port.mk
 #include $(CHIBIOS)/os/common/ports/ARMCMx/compilers/GCC/mk/port_v7m.mk
 # Auto-build files in ./source recursively.
 include $(CHIBIOS)/tools/mk/autobuild.mk
@@ -121,21 +121,22 @@ include $(CHIBIOS)/os/hal/lib/streams/streams.mk
 include $(CHIBIOS)/os/various/cpp_wrappers/chcpp.mk
 
 # Define linker script file here
-LDSCRIPT= $(STARTUPLD)/STM32F411xE.ld
+LDSCRIPT= $(STARTUPLD)/STM32L073xZ.ld
 
 # C sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
 CSRC = $(ALLCSRC) \
-       $(CHIBIOS)/os/various/evtimer.c nrf24l01/rf.c \
-       main.c sleep.c
+       $(CHIBIOS)/os/various/evtimer.c \
+       main.c nrf24l01/rf.c
 #       $(CHIBIOS)/os/various/syscalls.c \
 #       $(CONFDIR)/portab.c usbcfg.c \
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
-CPPSRC = $(ALLCPPSRC) calendarUTC/calendarUTC.cpp calendarUTC/rtcV2UTC.cpp gps.cpp tty/gets.cpp serial.cpp \
- 					  w25q16/w25q16.cpp servoPWM.cpp  ADC/adcUtils.cpp timer.cpp version.cpp \
- 					  flash/flash.cpp flash/flashVars.cpp flash/menuVars.cpp variables.cpp
+CPPSRC = $(ALLCPPSRC) tty/gets.cpp serial.cpp \
+ 					  servoPWM.cpp  ADC/adcUtils.cpp version.cpp \
+ 					  eeprom/eeprom.cpp variables.cpp
+ 					  
 #        \
          w25q16/w25q16.cpp w25q16/varsGestion.cpp w25q16/volcarFlash.cpp \
          SMS/sms.cpp SMS/manejaAT.cpp SMS/sim800.cpp  SMS/procesaOrden.cpp SMS/threadSMS.cpp \
@@ -172,7 +173,7 @@ UDEFS = -DCHPRINTF_USE_FLOAT=TRUE
 UADEFS =
 
 # List all user directories here
-UINCDIR = $(CHIBIOS)/os/hal/lib/streams usbSource cfg ADC w25q16 SMS tty calendarUTC flash nrf24l01
+UINCDIR = $(CHIBIOS)/os/hal/lib/streams ADC flash usbSource lcd nrf24l01 eeprom SMS tty calendarUTC flash
 
 # List the user directory to look for the libraries here
 ULIBDIR =
