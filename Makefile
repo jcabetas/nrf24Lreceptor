@@ -173,7 +173,7 @@ UDEFS = -DCHPRINTF_USE_FLOAT=TRUE
 UADEFS =
 
 # List all user directories here
-UINCDIR = $(CHIBIOS)/os/hal/lib/streams ADC flash usbSource lcd nrf24l01 eeprom SMS tty calendarUTC flash
+UINCDIR = $(CHIBIOS)/os/hal/lib/streams ADC flash lcd nrf24l01 eeprom SMS tty ssd1306
 
 # List the user directory to look for the libraries here
 ULIBDIR =

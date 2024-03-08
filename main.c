@@ -53,10 +53,15 @@
 #include "rf.h"
 #include "string.h"
 
+
+    void cierraPuertaC(void);
+    void abrePuertaC(void);
+    uint8_t abrePuertaHastaA1C(void);
+    void initServo(void);
+    void leeVariablesC(void);
+
 #undef  TRANSMITTER
-
 #define  FRAME_LEN                            5
-
 
 static const SPIConfig spicfg = {
   false,
@@ -118,6 +123,15 @@ int main(void) {
   chSysInit();
 
   parpadear(3,200);
+  leeVariablesC();
+
+  // test servo
+  initServo();
+  abrePuertaC();
+  chThdSleepMilliseconds(1000);
+  cierraPuertaC();
+  chThdSleepMilliseconds(1000);
+
 
   /*
    * SPID1 I/O pins setup.(It bypasses board.h configurations)
