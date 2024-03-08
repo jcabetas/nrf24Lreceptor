@@ -53,7 +53,7 @@
 #include "rf.h"
 #include "string.h"
 
-#define  TRANSMITTER                          FALSE
+#undef  TRANSMITTER
 
 #define  FRAME_LEN                            5
 
@@ -63,7 +63,7 @@ static const SPIConfig spicfg = {
   false,
   NULL,
   NULL,
-  GPIOB,
+  GPIOA,
   GPIOA_CS,
   SPI_CR1_BR_1 | SPI_CR1_BR_0,
   0
@@ -71,7 +71,7 @@ static const SPIConfig spicfg = {
 
 
 static RFConfig nrf24l01_cfg = {
-  .line_ce          = GPIOA_CE,
+  .line_ce          = LINE_CE,
   .line_irq         = LINE_IRQ,
   .spip             = &SPID1,
   .spicfg           = &spicfg,
@@ -122,9 +122,9 @@ int main(void) {
   /*
    * SPID1 I/O pins setup.(It bypasses board.h configurations)
    */
-  palSetLineMode(LINE_SPI1SCK, PAL_MODE_ALTERNATE(5) | PAL_STM32_OSPEED_HIGHEST);
-  palSetLineMode(LINE_SPI1MISO, PAL_MODE_ALTERNATE(5) | PAL_STM32_OSPEED_HIGHEST);
-  palSetLineMode(LINE_SPI1MOSI, PAL_MODE_ALTERNATE(5) | PAL_STM32_OSPEED_HIGHEST);
+  palSetLineMode(LINE_SPI1SCK, PAL_MODE_ALTERNATE(0) | PAL_STM32_OSPEED_HIGHEST);
+  palSetLineMode(LINE_SPI1MISO, PAL_MODE_ALTERNATE(0) | PAL_STM32_OSPEED_HIGHEST);
+  palSetLineMode(LINE_SPI1MOSI, PAL_MODE_ALTERNATE(0) | PAL_STM32_OSPEED_HIGHEST);
   palSetLineMode(LINE_CS, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
   /*
    * CE and IRQ pins setup.
@@ -142,7 +142,7 @@ int main(void) {
   rfStart(&RFD1, &nrf24l01_cfg);
 
   while (TRUE) {
-#if TRANSMITTER == TRUE
+#ifdef TRANSMITTER
     rf_msg_t msg;
     string[0] = '\0';
     while(TRUE){
@@ -164,7 +164,7 @@ int main(void) {
     string[0] = '\0';
     rf_msg_t msg = rfReceiveString(&RFD1, string, "RXadd", TIME_MS2I(4000));
     if (msg == RF_OK)
-        parpadear(5,150);
+        parpadear(5,100);
     else
         parpadear(1,150);
 #endif

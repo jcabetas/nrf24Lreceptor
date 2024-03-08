@@ -1,8 +1,8 @@
 # List of all the board related files.
-BOARDSRC = alimentadorEE4board/board.c
+BOARDSRC = alimentadorReceptor/board.c
 
 # Required include directories
-BOARDINC = alimentadorEE4board
+BOARDINC = alimentadorReceptor
 
 # Shared variables
 ALLCSRC += $(BOARDSRC)
