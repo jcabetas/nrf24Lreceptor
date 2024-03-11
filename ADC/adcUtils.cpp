@@ -11,6 +11,8 @@ extern "C"
     void pruebaADC(void);
     void initAdc(void);
     float hallaCapBatC(void);
+    void hallaFactorADC(void);
+    void leeTension(float *vBat);
 }
 
 //                       0%      5%    10%    15%    20%    25%    30%    35%   40%     45%    50%
@@ -21,7 +23,7 @@ float lipoVoltCharge[]={3.3f,  3.50f, 3.69f, 3.71f, 3.73f, 3.75f, 3.77f, 3.79f, 
 /*
  * La tension se lee en PB0 (ADC1-8), a traves de divisor 220/(91+220)=con factor 0,707395
  *   El fondo de escala es 4096 corresponde a 3.3 V
- *   Por tanto la tension es ADC*3.3/(0,707395*4096) = ADC*0,00113891682
+ *   Por tanto la tension es ADC*3.3/(0,707395*4095) = ADC*0,00113919494
  */
 
 #define ADC_GRP1_NUM_CHANNELS   1
@@ -40,49 +42,18 @@ static void adcerrorcallback(ADCDriver *adcp, adcerror_t err) {
   (void)err;
 }
 
-/*
+extern "C"
+{
+    void leeTension(float *vBat);
+}
+
+/*  leeTension(&vBat);
  * ADC conversion group.
  * Mode:        Linear buffer, 4 samples of 1 channel, SW triggered.
  * Channels:    B0 == AN8.
  * Channels:    B1 == AN9.
  */
 
-// ver os/common/ext/ST/STM32L0xx/stm32l071xx.h
-//typedef struct
-//{
-//  __IO uint32_t ISR;          /*!< ADC Interrupt and Status register,                          Address offset:0x00 */
-//  __IO uint32_t IER;          /*!< ADC Interrupt Enable register,                              Address offset:0x04 */
-//  __IO uint32_t CR;           /*!< ADC Control register,                                       Address offset:0x08 */
-//  __IO uint32_t CFGR1;        /*!< ADC Configuration register 1,                               Address offset:0x0C */
-//  __IO uint32_t CFGR2;        /*!< ADC Configuration register 2,                               Address offset:0x10 */
-//  __IO uint32_t SMPR;         /*!< ADC Sampling time register,                                 Address offset:0x14 */
-//  uint32_t   RESERVED1;       /*!< Reserved,                                                                  0x18 */
-//  uint32_t   RESERVED2;       /*!< Reserved,                                                                  0x1C */
-//  __IO uint32_t TR;           /*!< ADC watchdog threshold register,                            Address offset:0x20 */
-//  uint32_t   RESERVED3;       /*!< Reserved,                                                                  0x24 */
-//  __IO uint32_t CHSELR;       /*!< ADC channel selection register,                             Address offset:0x28 */
-//  uint32_t   RESERVED4[5];    /*!< Reserved,                                                                  0x2C */
-//  __IO uint32_t DR;           /*!< ADC data register,                                          Address offset:0x40 */
-//  uint32_t   RESERVED5[28];   /*!< Reserved,                                                           0x44 - 0xB0 */
-//  __IO uint32_t CALFACT;      /*!< ADC data register,                                          Address offset:0xB4 */
-//} ADC_TypeDef;
-
-// B0 = ADC-IN8
-//static const ADCConversionGroup adcgrpcfg1 = {
-//  FALSE,
-//  ADC_GRP1_NUM_CHANNELS,
-//  NULL,
-//  adcerrorcallback,
-//  ADC_CR_ADSTART,           /* CR */
-//  0,                        /* CFGR1 */
-//  0,                        /* CFGR2 */
-//  ADC_SMPR_SMP_160P5,       /* SMPR */
-//  0,                        /* TR */
-//  ADC_CHSELR_CHSEL8,        /* CHSELR */
-//  0,                        /* DR */
-//  0,                        /* CALFACT */
-//};
-//  ADC_CFGR1_CONT | ADC_CFGR1_RES_12BIT,             /* CFGR1 */
 
 static const ADCConversionGroup adcgrpcfg1 = {
   FALSE,
@@ -92,33 +63,58 @@ static const ADCConversionGroup adcgrpcfg1 = {
   ADC_CFGR1_CONT | ADC_CFGR1_RES_12BIT,             /* CFGR1 */
   ADC_TR(0, 0),                                     /* TR */
   ADC_SMPR_SMP_160P5,                                 /* SMPR */
-  ADC_CHSELR_CHSEL8                                /* CHSELR */
+  ADC_CHSELR_CHSEL0                                   /* CHSELR */
 };
 
 
-
-//static const ADCConversionGroup adcgrpcfg1 = {
-//  FALSE,
-//  ADC_GRP1_NUM_CHANNELS,
-//  NULL,
-//  adcerrorcallback,
-//  0,                        /* CFGR1 */
-//  0,                        /* TR */
-//  ADC_SMPR_SMP_160P5,       /* SMPR */
-//  ADC_CHSELR_CHSEL8,        /* CHSELR */
-//};
+static const ADCConversionGroup adccfgVref = {
+  FALSE,
+  ADC_GRP1_NUM_CHANNELS,
+  NULL,
+  adcerrorcallback,
+  ADC_CFGR1_CONT | ADC_CFGR1_RES_12BIT,             /* CFGR1 */
+  ADC_TR(0, 0),                                     /* TR */
+  ADC_SMPR_SMP_160P5,                                 /* SMPR */
+  ADC_CHSELR_CHSEL17                                   /* CHSELR */
+};
 
 extern int16_t incAdPormil;
+
+/* ADC internal channels related definitions */
+/* Internal voltage reference VrefInt */
+#define VREFINT_CAL_ADDR ((uint16_t*) ((uint32_t)0x1FF80078U))
+/* Internal voltage reference, address of parameter VREFINT_CAL: VrefInt ADC raw data acquired at temperature 30 DegC (tolerance: +-5 DegC), Vref+ = 3.0 V (tolerance: +-10 mV). */
+#define VREFINT_CAL_VREF ((uint16_t) 3000U)
+
+bool factorCalculado = false;
+float factorADC = 0.0032967033f; // (22+68)/22*3.3/4095
+void hallaFactorADC(void)
+{
+    uint16_t vrefcal = *VREFINT_CAL_ADDR;
+    // activa VREFEN
+    adcStart(&ADCD1,NULL);
+    ADC->CCR |= ADC_CCR_VREFEN;
+    chThdSleepMilliseconds(1);
+    adcConvert(&ADCD1, &adccfgVref, &samples_buf[0], ADC_GRP1_BUF_DEPTH);
+    adcStop(&ADCD1);
+    factorADC = 0.0032967033f*((float) samples_buf[0])/((float) vrefcal)*(1.0f+incAdPormil/1000.0f);
+}
+
 
 /* Lee tension */
 void leeTension(float *vBat)
 {
-    palSetLineMode(GPIOA_VINAD, PAL_MODE_INPUT_ANALOG); // B0 medida de bateria
-    chThdSleepMilliseconds(10);
+    palSetLineMode(LINE_VINAD, PAL_MODE_INPUT_ANALOG);
+    if (!factorCalculado)
+    {
+        hallaFactorADC();
+        factorCalculado = true;
+    }
+    chThdSleepMilliseconds(5);
     adcStart(&ADCD1,NULL);
     adcConvert(&ADCD1, &adcgrpcfg1, &samples_buf[0], ADC_GRP1_BUF_DEPTH);
     adcStop(&ADCD1);
-    *vBat = samples_buf[0]*0.00113919414f*(1.0f+incAdPormil/1000.0f);
+    *vBat = samples_buf[0]*factorADC;
 //    QUITAPAD(LINE_ONAD);
     chThdSleepMilliseconds(1);
 //    palSetPadMode(GPIOB, GPIOB_ONAD,PAL_MODE_INPUT_ANALOG);

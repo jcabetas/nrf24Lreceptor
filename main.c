@@ -52,13 +52,18 @@
 
 #include "rf.h"
 #include "string.h"
+#include <stdio.h>
 
 
-    void cierraPuertaC(void);
-    void abrePuertaC(void);
-    uint8_t abrePuertaHastaA1C(void);
-    void initServo(void);
-    void leeVariablesC(void);
+void cierraPuertaC(void);
+void abrePuertaC(void);
+uint8_t abrePuertaHastaA1C(void);
+void initServo(void);
+void leeVariablesC(void);
+void leeTension(float *vBat);
+
+uint8_t estadoPuerta;
+float vBatJaula;
 
 #undef  TRANSMITTER
 #define  FRAME_LEN                            5
@@ -101,17 +106,40 @@ void parpadear(uint8_t numVeces, uint16_t ms) {
     palSetLineMode(LINE_LED, PAL_MODE_OUTPUT_PUSHPULL);
     for (uint8_t i = 0; i < numVeces; i++) {
         palClearLine(LINE_LED); // enciende led placa
-        chThdSleepMilliseconds(10);
+        chThdSleepMilliseconds(30);
         palSetLine(LINE_LED); // apaga led placa
         chThdSleepMilliseconds(ms);
     }
     palSetLineMode(LINE_LED, PAL_MODE_INPUT_ANALOG);
 }
+
+
+//            01234567890
+// respuesta "1 12.34 100"
+//            P   V   V%
+/*
+
+
+uint8_t estadoPuerta;  // abierto:0 cerrado:1
+float vBatJaula;
+uint8_t porcBatJaula;
+ */
+void encodeStatus(char *buffer, uint8_t sizeofBuffer)
+{
+    if (sizeofBuffer<15)
+        return;
+    snprintf(buffer,sizeofBuffer, "%1d%5d%4d",estadoPuerta,(uint16_t)(100*vBatJaula),80);
+}
+
+
+
 /*
  * Application entry point.
  */
 int main(void) {
-    char string[10];
+    char string[15];
+    char buffer[15];
+    uint8_t estadoDeseado;
   /*
    * System initializations.
    * - HAL initialization, this also initializes the configured device drivers
@@ -125,13 +153,12 @@ int main(void) {
   parpadear(3,200);
   leeVariablesC();
 
+  leeTension(&vBatJaula);
+
   // test servo
   initServo();
-  abrePuertaC();
-  chThdSleepMilliseconds(1000);
   cierraPuertaC();
-  chThdSleepMilliseconds(1000);
-
+  estadoPuerta = 1;
 
   /*
    * SPID1 I/O pins setup.(It bypasses board.h configurations)
@@ -156,32 +183,37 @@ int main(void) {
   rfStart(&RFD1, &nrf24l01_cfg);
 
   while (TRUE) {
-#ifdef TRANSMITTER
-    rf_msg_t msg;
     string[0] = '\0';
-    while(TRUE){
-      msg = rfTransmitString(&RFD1, "Hola", "RXadd", TIME_MS2I(75));
-      if(msg == RF_OK){
-          parpadear(1,150);
-      }
-      else if(msg == RF_ERROR){
-          parpadear(3,150);
-//        chnWrite(&SD2, (const uint8_t *)"Message not sent (MAX_RT)\n\r", 27);
-      }
-      else{
-          parpadear(5,150);
-//        chnWrite(&SD2, (const uint8_t *)"Message not sent (TIMEOUT)\n\r", 28);
-      }
-      chThdSleepMilliseconds(500);
-    }
-#else
-    string[0] = '\0';
-    rf_msg_t msg = rfReceiveString(&RFD1, string, "RXadd", TIME_MS2I(4000));
+    estadoDeseado = 3;
+    rf_msg_t msg = rfReceiveString(&RFD1, string, "RXadd", TIME_MS2I(20000));
     if (msg == RF_OK)
-        parpadear(5,100);
+    {
+        //      "PUERTA:%d"
+        if (strstr(string,"PUERTA:"))
+        {
+            char estadoPuertaC = string[7];
+            if (estadoPuertaC == '0')
+                estadoDeseado = 0;
+            if (estadoPuertaC == '1')
+                estadoDeseado = 1;
+            if (estadoDeseado != 3)
+                estadoPuerta = estadoDeseado;
+            encodeStatus(buffer,sizeof(buffer));
+            msg = rfTransmitString(&RFD1, buffer, "RXadd", TIME_MS2I(75));
+        }
+        else if (strstr(string,"ESTADO"))
+        {
+            encodeStatus(buffer,sizeof(buffer));
+            msg = rfTransmitString(&RFD1, buffer, "RXadd", TIME_MS2I(75));
+        }
+        if (estadoDeseado == 0)
+            abrePuertaC();
+        else if (estadoDeseado == 1)
+            cierraPuertaC();
+        parpadear(1,10);
+    }
     else
-        parpadear(1,150);
-#endif
+        parpadear(2,50);
   }
   rfStop(&RFD1);
 }
